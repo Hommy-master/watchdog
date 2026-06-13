@@ -100,9 +100,9 @@ func (m *Monitor) stopAll() {
 
 func (s *appState) start() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if isAlive(s.cmd) {
+		s.mu.Unlock()
 		return nil
 	}
 
@@ -110,13 +110,19 @@ func (s *appState) start() error {
 	if s.app.Workdir != "" {
 		cmd.Dir = s.app.Workdir
 	}
+	prepareCommand(cmd)
 	if err := cmd.Start(); err != nil {
+		s.mu.Unlock()
 		return err
 	}
 
 	s.cmd = cmd
 	s.deadAt = time.Time{}
-	logger.Printf("started process %q pid=%d", s.app.Path, cmd.Process.Pid)
+	path := s.app.Path
+	pid := cmd.Process.Pid
+	s.mu.Unlock()
+
+	logger.Printf("started process %q pid=%d", path, pid)
 	go func() {
 		_ = cmd.Wait()
 	}()
@@ -125,20 +131,23 @@ func (s *appState) start() error {
 
 func (s *appState) check(now time.Time, delay time.Duration) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	path := s.app.Path
 
 	if isAlive(s.cmd) {
 		s.deadAt = time.Time{}
+		s.mu.Unlock()
 		return
 	}
 
 	if s.deadAt.IsZero() {
 		s.deadAt = now
-		logger.Printf("process %q is not running", s.app.Path)
+		s.mu.Unlock()
+		logger.Printf("process %q is not running", path)
 		return
 	}
 
 	if now.Sub(s.deadAt) < delay {
+		s.mu.Unlock()
 		return
 	}
 
@@ -146,14 +155,19 @@ func (s *appState) check(now time.Time, delay time.Duration) {
 	if s.app.Workdir != "" {
 		cmd.Dir = s.app.Workdir
 	}
+	prepareCommand(cmd)
 	if err := cmd.Start(); err != nil {
-		logger.Printf("failed to restart process %q: %v", s.app.Path, err)
+		s.mu.Unlock()
+		logger.Printf("failed to restart process %q: %v", path, err)
 		return
 	}
 
 	s.cmd = cmd
 	s.deadAt = time.Time{}
-	logger.Printf("restarted process %q pid=%d", s.app.Path, cmd.Process.Pid)
+	pid := cmd.Process.Pid
+	s.mu.Unlock()
+
+	logger.Printf("restarted process %q pid=%d", path, pid)
 	go func() {
 		_ = cmd.Wait()
 	}()
@@ -161,13 +175,20 @@ func (s *appState) check(now time.Time, delay time.Duration) {
 
 func (s *appState) stop() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	path := s.app.Path
+	var pid int
 	if s.cmd != nil && s.cmd.Process != nil {
-		logger.Printf("stopping process %q pid=%d", s.app.Path, s.cmd.Process.Pid)
+		pid = s.cmd.Process.Pid
 	}
-	stopProcess(s.cmd)
+	cmd := s.cmd
 	s.cmd = nil
 	s.deadAt = time.Time{}
+	s.mu.Unlock()
+
+	if pid > 0 {
+		logger.Printf("stopping process %q pid=%d", path, pid)
+	}
+	stopProcess(cmd)
 }
 
 func isAlive(cmd *exec.Cmd) bool {

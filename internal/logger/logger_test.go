@@ -36,6 +36,7 @@ func TestLogFormat(t *testing.T) {
 	}()
 
 	Printf("hello %s", "world")
+	SyncStdout()
 	w.Close()
 
 	var consoleBuf bytes.Buffer

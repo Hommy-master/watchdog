@@ -13,12 +13,15 @@ import (
 const logFileName = "watchdog.log"
 
 var (
-	mu   sync.Mutex
-	file *os.File
+	mu       sync.Mutex
+	file     *os.File
+	stdoutWG sync.WaitGroup
 )
 
 // Init opens watchdog.log and enables logging to both console and file.
 func Init() error {
+	disableQuickEdit()
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -30,8 +33,10 @@ func Init() error {
 	return nil
 }
 
-// Close closes the log file.
+// Close closes the log file after pending console writes finish.
 func Close() error {
+	syncStdout()
+
 	mu.Lock()
 	defer mu.Unlock()
 	if file == nil {
@@ -40,6 +45,15 @@ func Close() error {
 	err := file.Close()
 	file = nil
 	return err
+}
+
+// SyncStdout waits until queued console writes finish. It is intended for tests.
+func SyncStdout() {
+	syncStdout()
+}
+
+func syncStdout() {
+	stdoutWG.Wait()
 }
 
 // Printf writes a formatted log line.
@@ -55,6 +69,7 @@ func Println(args ...any) {
 // Fatalf writes a log line and exits with status 1.
 func Fatalf(format string, args ...any) {
 	write(2, fmt.Sprintf(format, args...))
+	syncStdout()
 	os.Exit(1)
 }
 
@@ -71,10 +86,14 @@ func write(skip int, message string) {
 	}
 
 	mu.Lock()
-	defer mu.Unlock()
-
-	_, _ = io.WriteString(os.Stdout, entry)
 	if file != nil {
 		_, _ = io.WriteString(file, entry)
 	}
+	mu.Unlock()
+
+	stdoutWG.Add(1)
+	go func() {
+		defer stdoutWG.Done()
+		_, _ = io.WriteString(os.Stdout, entry)
+	}()
 }
