@@ -1,0 +1,11 @@
+{
+	"interval": 1,
+	"delay": 5,
+	"apps": [
+		{
+			"path": "/usr/bin/demo_app",
+			"workdir": "/opt/demo",
+			"args": ["--mode=run", "--port=8080"]
+		}
+	]
+}
