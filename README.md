@@ -8,6 +8,7 @@
 {
 	"interval": 1,
 	"delay": 5,
+	"log_output": "console",
 	"apps": [
 		{
 			"path": "/usr/bin/demo_app",
