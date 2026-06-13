@@ -7,14 +7,16 @@ import (
 )
 
 const (
-	defaultInterval = 1
+	defaultInterval  = 1
+	defaultLogOutput = "console"
 )
 
 // Config is the root watchdog configuration loaded from JSON.
 type Config struct {
-	Interval int   `json:"interval"`
-	Delay    int   `json:"delay"`
-	Apps     []App `json:"apps"`
+	Interval  int    `json:"interval"`
+	Delay     int    `json:"delay"`
+	LogOutput string `json:"log_output"`
+	Apps      []App  `json:"apps"`
 }
 
 // App describes a single process to supervise.
@@ -50,6 +52,14 @@ func (c *Config) Validate() error {
 	}
 	if c.Delay < 0 {
 		return fmt.Errorf("delay must be >= 0")
+	}
+	if c.LogOutput == "" {
+		c.LogOutput = defaultLogOutput
+	}
+	switch c.LogOutput {
+	case "console", "file":
+	default:
+		return fmt.Errorf("log_output must be console or file")
 	}
 	if len(c.Apps) == 0 {
 		return fmt.Errorf("apps must not be empty")

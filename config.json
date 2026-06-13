@@ -1,11 +1,12 @@
 {
 	"interval": 1,
 	"delay": 5,
+	"log_output": "console",
 	"apps": [
 		{
-			"path": "/usr/bin/demo_app",
-			"workdir": "/opt/demo",
-			"args": ["--mode=run", "--port=8080"]
+			"path": "D:\\apps\\JianyingPro\\5.9.0.11632\\JianyingPro.exe",
+			"workdir": "",
+			"args": []
 		}
 	]
 }

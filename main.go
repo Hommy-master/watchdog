@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,18 +14,20 @@ import (
 )
 
 func main() {
-	if err := logger.Init(); err != nil {
-		panic(err)
-	}
-	defer logger.Close()
-
 	configPath := flag.String("config", "config.json", "path to JSON config file")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		logger.Fatalf("load config: %v", err)
+		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
+		os.Exit(1)
 	}
+
+	if err := logger.Init(cfg.LogOutput); err != nil {
+		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer logger.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

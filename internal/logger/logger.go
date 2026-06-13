@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,29 +13,42 @@ import (
 const logFileName = "watchdog.log"
 
 var (
-	mu   sync.Mutex
-	file *os.File
+	mu  sync.Mutex
+	out io.Writer
 )
 
-// Init opens watchdog.log in the current working directory for append.
-func Init() error {
-	f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
+// Init configures log output. Supported values: console, file.
+func Init(output string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	switch output {
+	case "console":
+		out = os.Stdout
+	case "file":
+		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return err
+		}
+		out = f
+	default:
+		return fmt.Errorf("unsupported log output: %q", output)
 	}
-	file = f
 	return nil
 }
 
-// Close closes the log file.
+// Close closes the log file when output is configured to file.
 func Close() error {
 	mu.Lock()
 	defer mu.Unlock()
-	if file == nil {
+
+	f, ok := out.(*os.File)
+	if !ok || f == os.Stdout || f == os.Stderr {
+		out = nil
 		return nil
 	}
-	err := file.Close()
-	file = nil
+	err := f.Close()
+	out = nil
 	return err
 }
 
@@ -68,7 +82,7 @@ func write(skip int, message string) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if file != nil {
-		_, _ = file.WriteString(entry)
+	if out != nil {
+		_, _ = io.WriteString(out, entry)
 	}
 }
