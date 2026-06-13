@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"watchdog/internal/config"
+	"watchdog/internal/logger"
 )
 
 // Monitor supervises configured processes on a fixed interval.
@@ -115,6 +116,7 @@ func (s *appState) start() error {
 
 	s.cmd = cmd
 	s.deadAt = time.Time{}
+	logger.Printf("started process %q pid=%d", s.app.Path, cmd.Process.Pid)
 	go func() {
 		_ = cmd.Wait()
 	}()
@@ -132,6 +134,7 @@ func (s *appState) check(now time.Time, delay time.Duration) {
 
 	if s.deadAt.IsZero() {
 		s.deadAt = now
+		logger.Printf("process %q is not running", s.app.Path)
 		return
 	}
 
@@ -144,11 +147,13 @@ func (s *appState) check(now time.Time, delay time.Duration) {
 		cmd.Dir = s.app.Workdir
 	}
 	if err := cmd.Start(); err != nil {
+		logger.Printf("failed to restart process %q: %v", s.app.Path, err)
 		return
 	}
 
 	s.cmd = cmd
 	s.deadAt = time.Time{}
+	logger.Printf("restarted process %q pid=%d", s.app.Path, cmd.Process.Pid)
 	go func() {
 		_ = cmd.Wait()
 	}()
@@ -157,6 +162,9 @@ func (s *appState) check(now time.Time, delay time.Duration) {
 func (s *appState) stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.cmd != nil && s.cmd.Process != nil {
+		logger.Printf("stopping process %q pid=%d", s.app.Path, s.cmd.Process.Pid)
+	}
 	stopProcess(s.cmd)
 	s.cmd = nil
 	s.deadAt = time.Time{}

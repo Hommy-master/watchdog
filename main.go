@@ -3,22 +3,27 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"watchdog/internal/config"
+	"watchdog/internal/logger"
 	"watchdog/internal/monitor"
 )
 
 func main() {
+	if err := logger.Init(); err != nil {
+		panic(err)
+	}
+	defer logger.Close()
+
 	configPath := flag.String("config", "config.json", "path to JSON config file")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		logger.Fatalf("load config: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -32,9 +37,9 @@ func main() {
 	}()
 
 	mon := monitor.New(cfg)
-	log.Printf("watchdog started: interval=%ds delay=%ds apps=%d", cfg.Interval, cfg.Delay, len(cfg.Apps))
+	logger.Printf("watchdog started: interval=%ds delay=%ds apps=%d", cfg.Interval, cfg.Delay, len(cfg.Apps))
 	if err := mon.Run(ctx); err != nil && err != context.Canceled {
-		log.Fatalf("monitor: %v", err)
+		logger.Fatalf("monitor: %v", err)
 	}
-	log.Println("watchdog stopped")
+	logger.Println("watchdog stopped")
 }
