@@ -13,42 +13,32 @@ import (
 const logFileName = "watchdog.log"
 
 var (
-	mu  sync.Mutex
-	out io.Writer
+	mu   sync.Mutex
+	file *os.File
 )
 
-// Init configures log output. Supported values: console, file.
-func Init(output string) error {
+// Init opens watchdog.log and enables logging to both console and file.
+func Init() error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	switch output {
-	case "console":
-		out = os.Stdout
-	case "file":
-		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err != nil {
-			return err
-		}
-		out = f
-	default:
-		return fmt.Errorf("unsupported log output: %q", output)
+	f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
 	}
+	file = f
 	return nil
 }
 
-// Close closes the log file when output is configured to file.
+// Close closes the log file.
 func Close() error {
 	mu.Lock()
 	defer mu.Unlock()
-
-	f, ok := out.(*os.File)
-	if !ok || f == os.Stdout || f == os.Stderr {
-		out = nil
+	if file == nil {
 		return nil
 	}
-	err := f.Close()
-	out = nil
+	err := file.Close()
+	file = nil
 	return err
 }
 
@@ -82,7 +72,9 @@ func write(skip int, message string) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if out != nil {
-		_, _ = io.WriteString(out, entry)
+
+	_, _ = io.WriteString(os.Stdout, entry)
+	if file != nil {
+		_, _ = io.WriteString(file, entry)
 	}
 }

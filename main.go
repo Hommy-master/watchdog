@@ -23,7 +23,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := logger.Init(cfg.LogOutput); err != nil {
+	if err := logger.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
 		os.Exit(1)
 	}

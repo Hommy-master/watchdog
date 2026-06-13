@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestLogFormatFile(t *testing.T) {
+func TestLogFormat(t *testing.T) {
 	dir := t.TempDir()
 	origWD, err := os.Getwd()
 	if err != nil {
@@ -20,46 +20,38 @@ func TestLogFormatFile(t *testing.T) {
 	}
 	defer os.Chdir(origWD)
 
-	if err := Init("file"); err != nil {
-		t.Fatal(err)
-	}
-	defer Close()
-
-	Printf("hello %s", "world")
-
-	data, err := os.ReadFile(filepath.Join(dir, logFileName))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assertLogLine(t, strings.TrimSpace(string(data)), "hello world")
-}
-
-func TestLogFormatConsole(t *testing.T) {
-	orig := os.Stdout
+	origStdout := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.Stdout = w
 
-	if err := Init("console"); err != nil {
+	if err := Init(); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		Close()
-		os.Stdout = orig
+		os.Stdout = origStdout
 	}()
 
-	Printf("console %s", "log")
+	Printf("hello %s", "world")
 	w.Close()
 
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
+	var consoleBuf bytes.Buffer
+	if _, err := io.Copy(&consoleBuf, r); err != nil {
 		t.Fatal(err)
 	}
 
-	assertLogLine(t, strings.TrimSpace(buf.String()), "console log")
+	consoleLine := strings.TrimSpace(consoleBuf.String())
+	assertLogLine(t, consoleLine, "hello world")
+
+	data, err := os.ReadFile(filepath.Join(dir, logFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileLine := strings.TrimSpace(string(data))
+	assertLogLine(t, fileLine, "hello world")
 }
 
 func assertLogLine(t *testing.T, line, wantMessage string) {

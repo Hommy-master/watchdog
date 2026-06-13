@@ -1,7 +1,6 @@
 {
 	"interval": 1,
 	"delay": 5,
-	"log_output": "console",
 	"apps": [
 		{
 			"path": "D:\\apps\\JianyingPro\\5.9.0.11632\\JianyingPro.exe",

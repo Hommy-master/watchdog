@@ -34,9 +34,6 @@ func TestLoadValidConfig(t *testing.T) {
 	if cfg.Delay != 3 {
 		t.Fatalf("Delay = %d, want 3", cfg.Delay)
 	}
-	if cfg.LogOutput != defaultLogOutput {
-		t.Fatalf("LogOutput = %q, want %q", cfg.LogOutput, defaultLogOutput)
-	}
 	if len(cfg.Apps) != 1 {
 		t.Fatalf("len(Apps) = %d, want 1", len(cfg.Apps))
 	}
@@ -69,29 +66,6 @@ func TestLoadDefaultInterval(t *testing.T) {
 	if cfg.Interval != defaultInterval {
 		t.Fatalf("Interval = %d, want default %d", cfg.Interval, defaultInterval)
 	}
-	if cfg.LogOutput != defaultLogOutput {
-		t.Fatalf("LogOutput = %q, want %q", cfg.LogOutput, defaultLogOutput)
-	}
-}
-
-func TestLoadLogOutputFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.json")
-	content := `{
-		"log_output": "file",
-		"apps": [{"path": "/bin/app"}]
-	}`
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if cfg.LogOutput != "file" {
-		t.Fatalf("LogOutput = %q, want file", cfg.LogOutput)
-	}
 }
 
 func TestValidateErrors(t *testing.T) {
@@ -114,11 +88,6 @@ func TestValidateErrors(t *testing.T) {
 			name:    "negative delay",
 			cfg:     Config{Interval: 1, Delay: -1, Apps: []App{{Path: "/bin/app"}}},
 			wantErr: "delay must be >= 0",
-		},
-		{
-			name:    "invalid log output",
-			cfg:     Config{Interval: 1, Delay: 1, LogOutput: "syslog", Apps: []App{{Path: "/bin/app"}}},
-			wantErr: "log_output must be console or file",
 		},
 	}
 
